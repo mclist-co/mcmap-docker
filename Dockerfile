@@ -1,40 +1,36 @@
-FROM alpine:3.17.2 AS builder_base
-RUN apk add --update --no-cache \
-    build-base \
+FROM ubuntu:22.04 AS builder_base
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+RUN apt-get update && apt-get install -y \
+    build-essential \
     git \
-    openssl-dev \
-    libffi-dev \
-    zlib-dev \
-    cmake \
-    fmt-dev \
-    spdlog-dev \
-    libpng-dev
+    cmake
 WORKDIR /app
 
 FROM builder_base AS builder_mcmap2
+RUN apt-get install -y libpng-dev zlib1g-dev
 RUN git clone https://github.com/WRIM/mcmap.git .
 RUN sed -i 's/-msse//g' Makefile
 RUN make
 
 FROM builder_base AS builder_mcmap3
-RUN git clone -b mineflayer https://github.com/spoutn1k/mcmap.git .
+RUN apt-get install -y libpng-dev cmake libspdlog-dev
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository universe
+RUN apt-get update
+RUN apt-get install -y libfmt-dev libfmt8
+WORKDIR /app
+RUN git clone https://github.com/spoutn1k/mcmap.git
+WORKDIR /app/mcmap
 RUN mkdir -p build
-WORKDIR /app/build
-RUN cmake .. -DMINEFLAYER=1
+WORKDIR /app/mcmap/build
+RUN cmake ..
 RUN make -j
 
 FROM builder_base
-RUN apk add --update --no-cache \
-    libstdc++ \
-    libpng \
-    zlib \
-    fmt \
-    spdlog \
-    libgomp \
-    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder_mcmap2 /app/mcmap /app/mcmap2
-COPY --from=builder_mcmap3 /app/build/bin/mcmap /app/mcmap3
-COPY --from=builder_mcmap3 /app/build/bin/ /app/mcmap3-utils/
+COPY --from=builder_mcmap3 /app/mcmap/build/bin/mcmap /app/mcmap3
+COPY --from=builder_mcmap3 /app/mcmap/build/bin/ /app/mcmap3-utils/
 
 ENV PATH="/app:/app/mcmap3-utils/:${PATH}"
 CMD ["mcmap3"]
