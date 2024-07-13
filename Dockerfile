@@ -4,18 +4,18 @@ ENV TZ=UTC
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
-    cmake
+    cmake \
+    libpng-dev
 WORKDIR /app
 
 FROM builder_base AS builder_mcmap2
-RUN apt-get install -y libpng-dev zlib1g-dev
+RUN apt-get install -y zlib1g-dev
 RUN git clone https://github.com/WRIM/mcmap.git .
 RUN sed -i 's/-msse//g' Makefile
 RUN make
 
 FROM builder_base AS builder_mcmap3
-RUN apt-get install -y libpng-dev cmake libspdlog-dev
-RUN apt-get install -y software-properties-common
+RUN apt-get install -y libspdlog-dev software-properties-common
 RUN add-apt-repository universe
 RUN apt-get update
 RUN apt-get install -y libfmt-dev libfmt8
